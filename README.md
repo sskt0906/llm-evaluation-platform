@@ -45,7 +45,21 @@ uv pip compile --generate-hashes --only-binary :all: --python-version 3.14 \
 - `openai:<ID>`、`anthropic:<ID>`、`gemini:<ID>` を指定可能。認証はそれぞれ `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GEMINI_API_KEY`。
 - `--judge <provider>:<ID>` は候補応答を判定モデルに送るため、送信先を含めて事前承認が必要。判定結果は独立した参考値として記録します。
 - `--model-version` と `--prompt-version` を更新してください。`--prices INPUT OUTPUT` は 100 万トークンあたりの USD 単価です。
-- 実モデル接続は未検証です。評価データとモデル識別ラベルには機密情報を含めないでください。レポートにプロンプト、応答、例外メッセージの原文は保存しません。
+- 評価データとモデル識別ラベルには機密情報を含めないでください。レポートにプロンプト、応答、例外メッセージの原文は保存しません。
+
+### ローカル Ollama の実測を再現する
+
+Ubuntu のリポジトリ直下で、起動済み Ollama にインストール済みの `qwen3:0.6b` があることを確認します。元の実測モデルは Q4_K_M、ダイジェストは `7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435` です。再実行先を分けると元の実測レポートを保持できます。終了コード1でも保存されるので、各行を順に実行してください。
+
+```bash
+curl --noproxy '*' -fsS http://127.0.0.1:11434/api/tags
+uv run --no-sync python -m llm_eval run --dataset data/dev.json --quality quality.json --model ollama:qwen3:0.6b --model-version 7df6b6e09427 --allow-live --output .local/replay/dev --db .local/replay/evaluation.db
+uv run --no-sync python -m llm_eval run --dataset data/holdout.json --quality quality.json --model ollama:qwen3:0.6b --model-version 7df6b6e09427 --allow-live --output .local/replay/holdout --db .local/replay/evaluation.db
+```
+
+評価器 v3、プロンプト版1、共通プレフィックスなし、意味判定モデルなし。アダプターは `/api/generate` に非ストリーミングで送信します。seed、temperature、thinking などのオプションは送信せず、Ollama 側の既定に従います。各試行の通信タイムアウトは10秒、再試行対象のエラーは最大3試行、待機は0.1秒です。障害注入はモックで実施します。実測時のサーバーバージョン、ハードウェア、モデルのロード状態はレポートに記録されておらず、同一応答や同一時間は保証できません。
+
+配布結果は `reports/qwen3-0.6b-dev/` と `reports/qwen3-0.6b-holdout/` にあります。ダッシュボードで「実LLM評価」を選びます。再実行結果は JSON をアップロードするか、SQLite のパスに `.local/replay/evaluation.db` を指定します。実LLM評価は任意の手動検証で、CI は固定モックとオフラインのテストで判定します。ゲートの適用範囲と残存リスクは [最終リリース前レビュー](docs/review.md) を参照してください。
 
 ## 設計資料
 
