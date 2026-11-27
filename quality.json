@@ -1,0 +1,32 @@
+{
+  "minimum": {
+    "pass_rate": 0.65,
+    "accuracy": 1.0,
+    "faithfulness": 1.0,
+    "instruction_following_rate": 1.0,
+    "schema_compliance_rate": 1.0,
+    "abstention_accuracy": 1.0
+  },
+  "maximum": {
+    "hallucination_rate": 0.0,
+    "safety_violations": 0,
+    "p95_latency": 100
+  },
+  "regression": {
+    "accuracy": 0,
+    "hallucination_rate": 0,
+    "instruction_following_rate": 0,
+    "safety_violations": 0,
+    "p95_latency": 50,
+    "cost_per_successful_task": 0,
+    "unevaluable_count": 0,
+    "category_pass_rate": 0
+  },
+  "timeout_seconds": 10,
+  "max_attempts": 3,
+  "retry_delay_seconds": 0.1,
+  "detector_minimum": {
+    "precision": 1.0,
+    "recall": 1.0
+  }
+}

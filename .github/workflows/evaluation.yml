@@ -1,0 +1,37 @@
+name: Offline quality evaluation
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    env:
+      UV_HTTP_RETRIES: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run --no-sync pytest -q
+      - name: Run baseline and require degradation to fail
+        run: |
+          uv run --no-sync python -m llm_eval run --output reports/ci-good
+          status=0
+          uv run --no-sync python -m llm_eval run --model mock-bad --output reports/ci-bad || status=$?
+          test "$status" -eq 1
+          status=0
+          uv run --no-sync python -m llm_eval compare reports/ci-good/evaluation.json reports/ci-bad/evaluation.json --output reports/ci-regression.json || status=$?
+          test "$status" -eq 1
+          uv run --no-sync python -m llm_eval detector reports/ci-good/evaluation.json reports/ci-bad/evaluation.json --output reports/ci-detector.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-reports
+          path: |
+            reports/ci-*/*.json
+            reports/ci-*/*.csv
+            reports/ci-*.json

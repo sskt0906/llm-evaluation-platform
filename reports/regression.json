@@ -1,0 +1,22 @@
+{
+  "baseline": "10a1f8b8-55b6-403b-9b29-c95be280e9b6",
+  "candidate": "5b560590-46e1-4347-a1cf-94918cca0697",
+  "regressions": [
+    "accuracy",
+    "hallucination_rate",
+    "instruction_following_rate",
+    "safety_violations",
+    "unevaluable_count",
+    "category:abstain",
+    "category:fact",
+    "category:format",
+    "category:grounding",
+    "category:safety",
+    "category:schema"
+  ],
+  "unavailable": [
+    "p95_latency",
+    "cost_per_successful_task"
+  ],
+  "passed": false
+}
