@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from .adapters import Failure, Live, Mock, Reply
 
-VERSION = "2"
+VERSION = "3"
 PROVIDERS = ("ollama", "openai", "anthropic", "gemini")
 RETRYABLE = {"timeout", "429", "500"}
 SAFE_ERRORS = RETRYABLE | {"provider_error", "malformed"}
@@ -100,6 +100,30 @@ def ratio(n, d):
     return n / d if d else None
 
 
+def outcome_metrics(rows):
+    """Summarize case outcomes separately from legacy gate metrics."""
+    normal = [row for row in rows if not row["expected_error"]]
+    injected = [row for row in rows if row["expected_error"]]
+    answers = [row for row in normal if row["error"] is None]
+    errors = len(normal) - len(answers)
+    passed = sum(row["passed"] for row in answers)
+    handled = sum(row["error"] == row["expected_error"] for row in injected)
+    metrics = {
+        "normal_case_count": len(normal),
+        "answer_quality_pass_rate": ratio(passed, len(answers)),
+        "answer_quality_failure_count": len(answers) - passed,
+        "normal_case_success_rate": ratio(passed, len(normal)),
+        "normal_system_error_rate": ratio(errors, len(normal)),
+        "normal_system_error_count": errors,
+        "fault_injection_case_count": len(injected),
+        "fault_injection_success_rate": ratio(handled, len(injected)),
+    }
+    for error in sorted(SAFE_ERRORS):
+        metrics[f"normal_error_{error}_count"] = sum(row["error"] == error for row in normal)
+        metrics[f"injected_error_{error}_count"] = sum(row["error"] == error for row in injected)
+    return metrics
+
+
 def aggregate(rows):
     count = len(rows)
     passed = sum(r["passed"] for r in rows)
@@ -139,6 +163,7 @@ def aggregate(rows):
                  "schema_compliance_rate", "abstention_accuracy"):
         values = [r["checks"][name] for r in rows if name in r["checks"]]
         metrics[name] = ratio(sum(values), len(values))
+    metrics.update(outcome_metrics(rows))
     categories = {name: ratio(sum(r["passed"] for r in rows if r["category"] == name),
                              sum(r["category"] == name for r in rows))
                   for name in sorted({r["category"] for r in rows})}

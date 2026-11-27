@@ -8,10 +8,11 @@ An offline-first LLM evaluation platform with deterministic mock baselines, conf
 
 ## 再現手順
 
-リポジトリ直下で Python 3.14 と uv を使用します。依存パッケージがキャッシュに揃っていれば `uv sync --locked --offline` が使えます。
+ダッシュボードを含む標準検証は、リポジトリ直下で CI と同じ Linux x86_64（glibc 2.28 以上）、Python 3.14、uv を使用します。依存パッケージがキャッシュに揃っていれば同期・インストールに `--offline` を追加できます。
 
 ```bash
 uv sync --locked
+uv pip install --only-binary :all: --require-hashes -r requirements-dashboard.txt
 uv run --no-sync pytest -q
 uv run --no-sync python -m llm_eval run --output reports/good --db evaluation.db
 uv run --no-sync python -m llm_eval run --model mock-bad --output reports/bad --db evaluation.db
@@ -24,11 +25,17 @@ uv run --no-sync python -m llm_eval detector reports/good/evaluation.json report
 ## ダッシュボード
 
 ```bash
-UV_HTTP_RETRIES=0 uv pip install -r requirements-dashboard.txt
 uv run --no-sync streamlit run dashboard.py
 ```
 
-配布済み JSON を既定で表示します。サイドバーで JSON の追加読み込みや SQLite への切り替えができます。リモートの Streamlit は SSH ポート転送や既存の認証付き経路から利用してください。Streamlit のインストールと画面実行の検証状況は品質レビュー記録を参照してください。
+配布済み JSON を既定で表示します。サイドバーで JSON の追加読み込みや SQLite への切り替えができます。リモートの Streamlit は SSH ポート転送や既存の認証付き経路から利用してください。モードを切り替えると、実行時に記録されたモック評価と実LLM評価を確認できます。履歴が1件でも点を描画します。率の「未測定」と観測結果ゼロを区別します。回帰比較は同じ評価器版・データ・ポリシーで取得した2件を使用してください。
+
+`uv.lock` は CLI と pytest の標準依存に使います。画面の直接依存は `requirements-dashboard.in` に記述し、推移依存を含めて `requirements-dashboard.txt` にバージョンとハッシュを固定しています。画面依存を変更したら、CI と同じ対象環境で次のコマンドを実行します。 `uv sync` を再実行した場合は、画面依存も再インストールしてください。
+
+```bash
+uv pip compile --generate-hashes --only-binary :all: --python-version 3.14 \
+  --python-platform x86_64-manylinux_2_28 requirements-dashboard.in -o requirements-dashboard.txt
+```
 
 ## 実モデルと意味的評価
 
@@ -42,6 +49,7 @@ uv run --no-sync streamlit run dashboard.py
 
 ## 設計資料
 
+- [学習用技術解説書](docs/learning-guide.md)
 - [要求仕様書](docs/requirements.md)
 - [テスト戦略書](docs/test-strategy.md)
 - [テスト設計書](docs/test-design.md)
